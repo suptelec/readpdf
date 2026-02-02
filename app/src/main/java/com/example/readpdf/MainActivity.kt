@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.net.Uri
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
+import android.util.Log
 import android.widget.Button
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,13 +18,20 @@ import java.util.Locale
 
 class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
+    companion object {
+        private const val TAG = "ReadPdf"
+    }
+
     private lateinit var statusText: TextView
     private var tts: TextToSpeech? = null
 
     private val pickPdf = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             statusText.text = getString(R.string.status_loading)
+            Log.d(TAG, "PDF seleccionado: $uri")
             readPdf(uri)
+        } else {
+            Log.w(TAG, "No se seleccionó ningún PDF.")
         }
     }
 
@@ -59,21 +67,32 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun readPdf(uri: Uri) {
+        Log.d(TAG, "Iniciando lectura del PDF: $uri")
         val tempFile = copyToCache(contentResolver, uri) ?: run {
             statusText.text = getString(R.string.status_error)
+            Log.e(TAG, "Error al copiar el PDF al cache.")
             return
         }
 
-        val document = PDDocument.load(tempFile)
-        val stripper = PDFTextStripper()
-        val text = stripper.getText(document).trim()
-        document.close()
+        val text = try {
+            val document = PDDocument.load(tempFile)
+            val stripper = PDFTextStripper()
+            val extractedText = stripper.getText(document).trim()
+            document.close()
+            extractedText
+        } catch (exception: Exception) {
+            Log.e(TAG, "Error al procesar el PDF.", exception)
+            statusText.text = getString(R.string.status_error)
+            return
+        }
 
         if (text.isBlank()) {
             statusText.text = getString(R.string.status_error)
+            Log.w(TAG, "El PDF no contiene texto legible.")
             return
         }
 
+        Log.d(TAG, "Texto extraído, iniciando TTS.")
         tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "pdf_read")
         statusText.text = getString(R.string.status_done)
     }
@@ -88,6 +107,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
             cacheFile
         } catch (exception: Exception) {
+            Log.e(TAG, "Error al copiar el archivo a cache.", exception)
             null
         }
     }
