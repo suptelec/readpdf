@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Read PDF</string>
+    <string name="pick_pdf">Escoger PDF</string>
+    <string name="status_idle">Selecciona un PDF para escucharlo.</string>
+    <string name="status_loading">Leyendo el PDF...</string>
+    <string name="status_done">Lectura iniciada.</string>
+    <string name="status_error">No se pudo leer el PDF.</string>
+</resources>
